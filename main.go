@@ -39,8 +39,7 @@ func run(ctx context.Context) error {
 		return nil
 	}
 
-	var ssoAccountID, ssoRoleName, ssoStartURL string
-	var tokenFilePath string
+	var ssoStartURL, tokenFilePath string
 	for _, src := range cfg.ConfigSources {
 		if scfg, ok := src.(config.SharedConfig); ok && scfg.SSOSession != nil {
 			if scfg.SSOSessionName == "" {
@@ -49,14 +48,12 @@ func run(ctx context.Context) error {
 			if tokenFilePath, err = ssocreds.StandardCachedTokenFilepath(scfg.SSOSessionName); err != nil {
 				return err
 			}
-			ssoAccountID = scfg.SSOAccountID
-			ssoRoleName = scfg.SSORoleName
 			ssoStartURL = scfg.SSOSession.SSOStartURL
 			break
 		}
 	}
-	if ssoAccountID == "" || ssoRoleName == "" || ssoStartURL == "" {
-		return fmt.Errorf("one of the values is missing from config: sso_account_id=%q, sso_role_name=%q, sso_start_url=%q", ssoAccountID, ssoRoleName, ssoStartURL)
+	if ssoStartURL == "" {
+		return errors.New("sso_start_url must be set")
 	}
 
 	svc := ssooidc.NewFromConfig(cfg)
@@ -82,22 +79,21 @@ func run(ctx context.Context) error {
 	_ = openBrowser(*deviceAuth.VerificationUriComplete)
 	const delay = 5 * time.Second
 	log.Printf("polling every %v until the login form is completed", delay)
-	ticker := time.NewTicker(delay)
-	var token *ssooidc.CreateTokenOutput
 	createTokenInput := ssooidc.CreateTokenInput{
 		ClientId:     reg.ClientId,
 		ClientSecret: reg.ClientSecret,
 		DeviceCode:   deviceAuth.DeviceCode,
 		GrantType:    ptr("urn:ietf:params:oauth:grant-type:device_code"),
 	}
+	ticker := time.NewTicker(delay)
+	var token *ssooidc.CreateTokenOutput
 pollLoop:
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			token, err = svc.CreateToken(ctx, &createTokenInput)
-			if err == nil {
+			if token, err = svc.CreateToken(ctx, &createTokenInput); err == nil {
 				break pollLoop
 			}
 			if strings.Contains(err.Error(), "AuthorizationPendingException") {
