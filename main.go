@@ -115,7 +115,6 @@ pollLoop:
 	if err != nil {
 		return err
 	}
-	log.Printf("saving credentials to %v", tokenFilePath)
 	return os.WriteFile(tokenFilePath, b, 0600)
 }
 
