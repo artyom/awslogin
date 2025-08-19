@@ -61,7 +61,7 @@ func run(ctx context.Context) error {
 	reg, err := svc.RegisterClient(ctx, &ssooidc.RegisterClientInput{
 		ClientName: ptr("github.com/artyom/awslogin"),
 		ClientType: ptr("public"),
-		Scopes:     []string{"sso-portal:*"},
+		Scopes:     []string{"sso:account:access"},
 	})
 	if err != nil {
 		return fmt.Errorf("RegisterClient: %w", err)
