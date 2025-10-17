@@ -75,11 +75,10 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("StartDeviceAuthorization: %w", err)
 	}
-	log.Println("Please login at:", *deviceAuth.VerificationUriComplete, codeNotice(*deviceAuth.VerificationUriComplete))
+	const delay = 5 * time.Second
+	log.Println("Polling every", delay, "until the login form is completed:", *deviceAuth.VerificationUriComplete, codeNotice(*deviceAuth.VerificationUriComplete))
 
 	_ = openBrowser(*deviceAuth.VerificationUriComplete)
-	const delay = 5 * time.Second
-	log.Printf("polling every %v until the login form is completed", delay)
 	createTokenInput := ssooidc.CreateTokenInput{
 		ClientId:     reg.ClientId,
 		ClientSecret: reg.ClientSecret,
