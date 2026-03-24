@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -59,8 +58,8 @@ func run(ctx context.Context) error {
 
 	svc := ssooidc.NewFromConfig(cfg)
 	reg, err := svc.RegisterClient(ctx, &ssooidc.RegisterClientInput{
-		ClientName: ptr("github.com/artyom/awslogin"),
-		ClientType: ptr("public"),
+		ClientName: new("github.com/artyom/awslogin"),
+		ClientType: new("public"),
 		Scopes:     []string{"sso:account:access"},
 	})
 	if err != nil {
@@ -76,14 +75,14 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("StartDeviceAuthorization: %w", err)
 	}
 	const delay = 5 * time.Second
-	log.Println("Polling every", delay, "until the login form is completed:", *deviceAuth.VerificationUriComplete, codeNotice(*deviceAuth.VerificationUriComplete))
+	log.Println("Polling every", delay, "until the login form is completed:", *deviceAuth.VerificationUriComplete)
 
 	_ = openBrowser(*deviceAuth.VerificationUriComplete)
 	createTokenInput := ssooidc.CreateTokenInput{
 		ClientId:     reg.ClientId,
 		ClientSecret: reg.ClientSecret,
 		DeviceCode:   deviceAuth.DeviceCode,
-		GrantType:    ptr("urn:ietf:params:oauth:grant-type:device_code"),
+		GrantType:    new("urn:ietf:params:oauth:grant-type:device_code"),
 	}
 	ticker := time.NewTicker(delay)
 	var token *ssooidc.CreateTokenOutput
@@ -117,7 +116,6 @@ pollLoop:
 	return os.WriteFile(tokenFilePath, b, 0600)
 }
 
-func ptr[T any](v T) *T { return &v }
 func unptr[T any](v *T) T {
 	var zero T
 	if v == nil {
@@ -152,23 +150,4 @@ func openBrowser(url string) error {
 		return fmt.Errorf("don't know how to open %q on %s", url, runtime.GOOS)
 	}
 	return exec.Command(openCmd, url).Run()
-}
-
-func codeNotice(s string) string {
-	if code := extractCode(s); code != "" {
-		return "(make sure the code on the page is \033[7m" + code + "\033[0m)"
-	}
-	return ""
-}
-
-func extractCode(s string) string {
-	// https://org.awsapps.com/start/#/device?user_code=ABCD-1234
-	u, err := url.Parse(s)
-	if err != nil {
-		return ""
-	}
-	if u, err = url.Parse(u.Fragment); err != nil {
-		return ""
-	}
-	return u.Query().Get("user_code")
 }
