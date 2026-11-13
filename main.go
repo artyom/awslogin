@@ -75,7 +75,9 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("StartDeviceAuthorization: %w", err)
 	}
 	const delay = 5 * time.Second
-	log.Println("Polling every", delay, "until the login form is completed:", *deviceAuth.VerificationUriComplete)
+	log.Printf("%s\nPolling every %v until login is complete.\n"+
+		"Check that your browser shows \033[7m%s\033[0m before approving.",
+		unptr(deviceAuth.VerificationUriComplete), delay, unptr(deviceAuth.UserCode))
 
 	_ = openBrowser(*deviceAuth.VerificationUriComplete)
 	createTokenInput := ssooidc.CreateTokenInput{
